@@ -103,10 +103,6 @@ var MAIN_ENTRY_ROWS = [];
 //var SHIPMENTS_SHEET_NAME = "Shipments";
 var MERGED_SHEET_NAME = "Orders and Shipments";
 
-// ID's of external sheets.
-var ORDERS_SHEET_ID = '14zfCISZvAfcYdLVYpOxphP3NpYSFqLt7ygPZnUzJYgQ';
-var SHIPMENTS_SHEET_ID = '1b3MlpyA8D2xgdqzb3HLOOobLX6VG3eabE-pgR7kqMl0';
-
 // Sheet objects
 var MERGED_SHEET = SpreadsheetApp.getActive().getSheetByName(MERGED_SHEET_NAME);
 
@@ -122,4 +118,4 @@ var EMPTY_ROW = filledArray(MERGED_SHEET_WIDTH, "");
 var SHADING_COLOR = 'Azure';
 
 // How many header rows on the merged sheet. 
-var MERGED_SHEET_HEADER_ROW_COUNT = 3;
+var MERGED_SHEET_HEADER_ROW_COUNT = 4;

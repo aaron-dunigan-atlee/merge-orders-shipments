@@ -116,6 +116,6 @@ function setMergedSheetFormats() {
 function setTimeStamp() {
   var now = new Date();
   var timeStamp = [["Last updated:", now]];
-  MERGED_SHEET.getRange(1,1,1,2).setValues(timeStamp);
-  MERGED_SHEET.getRange(1,2,1,1).setNumberFormat('m/d/yy h:mm');
+  MERGED_SHEET.getRange(2,1,1,2).setValues(timeStamp);
+  MERGED_SHEET.getRange(2,2,1,1).setNumberFormat('m/d/yy h:mm');
 }
