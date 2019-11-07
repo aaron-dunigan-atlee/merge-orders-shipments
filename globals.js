@@ -4,12 +4,6 @@
  
  Variables we will use throughout the script. */
 
-// Column letters 
-// (for use in formula references).
-var ITEM_PRICE_COLUMN_LETTER = 'N';
-var ITEM_QTY_COLUMN_LETTER = 'M';
-var ITEM_TOTAL_COLUMN_LETTER = 'O';
-var SHIP_DATE_COLUMN_LETTER = 'AM';
 
 // Column indices
 // Indices for columns which will contain formulas or formatting.  
@@ -63,9 +57,6 @@ var MERGED_SHEET_HEADERS = MergeDb.getHeaders(MERGED_SHEET_NAME);
 // Width of merged sheet and a template of empty strings to start off each row
 var MERGED_SHEET_WIDTH = MERGED_SHEET.getLastColumn();
 var EMPTY_ROW = filledArray(MERGED_SHEET_WIDTH, "");
-
-// Color to use when shading first row of each entry.
-var SHADING_COLOR = 'Azure';
 
 // How many header rows on the merged sheet. 
 var MERGED_SHEET_HEADER_ROW_COUNT = 4;

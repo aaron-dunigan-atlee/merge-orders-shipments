@@ -104,9 +104,6 @@ function setMergedSheetFormats(row, height) {
   // Apply checkboxes to Fulfilled and Shipped columns.
   MERGED_SHEET.getRange(row + 1, ORDER_FULFILLED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
   MERGED_SHEET.getRange(row + 1, ITEM_SHIPPED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
-  // Apply Shading to main entry rows.
-  // ????????????
-  MERGED_SHEET.getRangeList(MAIN_ENTRY_ROWS).setBackground(SHADING_COLOR);
   // Don't extend order keys outside the cell.
   MERGED_SHEET.getRange(row + 1, ORDER_KEY_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
 }
