@@ -1,7 +1,8 @@
 /*
 Database functions for the merged sheet.
 Interacts with rows as objects using the headers in row 1.
-They should be of the form orders_propertyName or shipments_propertyName.
+They should be of the form orders_propertyName or shipments_propertyName,
+or merged_propertyName.
 */
 
 var MergeDb = (function () {
@@ -13,90 +14,74 @@ var MergeDb = (function () {
     });
   }
   
-  function addRows(sheetName, objects) {
+  function addRows(sheetName, hashedObjects) {
     // Add rows to the sheet.  Values will be taken from objects, 
     // where attribute names match column headers.  Attributes that are
     // not in the headers will be ignored.
-    
     var sheet = getSheet(sheetName);
-    var headers = getHeader(sheetName);
-    var ranges = [];
-    for (var i=0; i<objects.length; i++) {
-      var rowData = constructArrayFromObject(headers, objects[i]);  
-      sheet.appendRow(rowData);
-    }
-  }
-  
-  function constructArrayFromObject(headers, rowObject) {
-    var arrayData = [];
-    // Construct an array whose values come from rowObject, 
-    // and correspond with the property names in headers.
-    for (var i=0; i<headers.length; i++) {
-      if (rowObject.hasOwnProperty(headers[i])) {
-        arrayData.push(rowObject[headers[i]]);
-      } else {
-        arrayData.push(""); 
+    var matrixToAppend = [];
+    for (var orderKey in hashedObjects) {
+      var orderItemArray = hashedObjects[orderKey];
+      matrixToAppend.push(constructOrderHeaderRow(orderItemArray[0], orderItemArray.length));
+      for (var i=0; i<orderItemArray.length; i++) {
+        matrixToAppend.push(constructItemRow(orderItemArray[i]));
       }
     }
-    return arrayData;
+    var firstBlankRow = sheet.getLastRow() + 1;
+    // Set formats and write to sheet.
+    setMergedSheetFormats(row, matrixToAppend.length);
+    appendMatrix(sheet, row, matrixToAppend);
+  }
+
+  // Append a matrix of data at the row indicated.
+  function appendMatrix(sheetObject, row, matrix) {
+    var height = matrix.length;
+    var width = matrix[0].length;
+    sheetObject.getRange(row, 1, height, width).setValues(matrix);
   }
   
-  function setRows(sheetName, keyName, rowObjects) {
-    // Update some rows in the sheet.  Values will be taken from objects, 
+  function fillRow(sheetName, filterObject, rowObject) {
+    // Update a single row in the sheet.  Cells with prior values will not be replaced.
+    // Values will be taken from rowObject, 
     // where attribute names match column headers.  Attributes that are
     // not in the headers will be ignored.  Rows to be changed will be 
     // determined by filterObject, which should be one of the headers/attributes
-    // If the value at keyName in each object does not uniquely determine a row,
-    // all matching rows will be updated.
-    // If a matching row is not found, a new row will be created.
+    // If a matching row is not found, a message will be logged.
     
-    // Lock the script so we don't get multiple invocations trying to modify the sheet simulteaneously.
-    var lock = LockService.getScriptLock();
-    lock.waitLock(30000);  
     var sheet = getSheet(sheetName);
     var headers = getHeadersAsPropertyNames(sheetName);
     var dbObjects = getObjects(sheetName);
     var offsetHeaderRow = 1;
     var offsetZeroBasedIndex = 1;
-    for (var j=0; j<rowObjects.length; j++) {
-      if (rowObjects[j].hasOwnProperty(keyName)) {
-        var filterObject = {};
-        filterObject[keyName] = [rowObjects[j][keyName]];
-        var foundMatchingRow = false;
-        var rowData = constructArrayFromObject(headers, rowObjects[j]); 
-        for (var i = dbObjects.length - 1; i >= 0; i--) {
-          if (objectMatchesFilterObject(dbObjects[i], filterObject)) { 
-            foundMatchingRow = true;
-            var rowToUpdate = i + offsetHeaderRow + offsetZeroBasedIndex;
-            sheet.getRange(rowToUpdate, 1, 1, rowData.length).setValues([rowData]);
+
+    var foundMatchingRow = false;
+    // Iterate from end for more efficiency.
+    for (var i = dbObjects.length - 1; i >= 0; i--) {
+      if (objectMatchesFilterObject(dbObjects[i], filterObject)) { 
+        foundMatchingRow = true; 
+        var rowToUpdate = i + MERGED_SHEET_HEADER_ROW_COUNT + ROW_INDEX_OFFSET;
+        var rowRange = sheet.getRange(rowToUpdate, 1, 1, sheet.getLastColumn());
+        var rowValues = rowRange.getValues();
+        var rowFormulas = rowRange.getFormulas();
+        for (var column=1; column<=rowValues.length; column++) {
+          var columnIndex = column - COLUMN_INDEX_OFFSET;
+          if (rowValues[columnIndex].trim() == '' && rowFormulas[columnIndex].trim() == '') {
+            var property = headers[columnIndex];
+            if (rowObject.hasOwnProperty(property)) {
+              // Set one cell at a time.  Inefficient, but it can't be avoided.
+              sheet.getRange(rowToUpdate, column).setValue(rowObject[property]);
+            }
           }
         }
-        if (!foundMatchingRow) {
-          sheet.appendRow(rowData);
-        }
       }
     }
-    SpreadsheetApp.flush();
-    lock.releaseLock();
+    if (!foundMatchingRow) {
+      var message = "Could not find row in merged sheet where " + filterObject;
+      Logger.log(message);
+    } 
   }
   
-  function delRows(sheetName, filterObject) {
-    var lock = LockService.getScriptLock();
-    lock.waitLock(30000);  
-    var sheet = getSheet(sheetName);
-    var objects = getObjects(sheetName);
-    var offsetHeaderRow = 1;
-    var offsetZeroBasedIndex = 1;
-    for (var i = objects.length - 1; i >= 0; i--) {
-      if (objectMatchesFilterObject(objects[i], filterObject)) { 
-        var rowToDelete = i + offsetHeaderRow + offsetZeroBasedIndex;
-        sheet.deleteRow(rowToDelete);
-      }
-    }
-    // Flush sheet before releasing lock.  See https://developers.google.com/apps-script/reference/lock/lock#releaseLock()
-    SpreadsheetApp.flush();  
-    lock.releaseLock();
-  }
+  function delRows() {  }
   
   function leftJoin(leftObjects, rightObjects, leftKey, rightKey) {
     var hashRightObjects = hashArr(rightObjects, rightKey);
@@ -143,61 +128,6 @@ var MergeDb = (function () {
     return true;
   }
   
-  function getObjectsWithFilter(sheetName, filter, desiredProperties) {
-    // A more efficient version of getRows():
-    // Create an array of objects, one for each row in sheet sheetName.
-    // 'desiredProperties' is an array of desired property names, e.g. studentsFirstName.
-    // Return only rows that match the filter, 
-    // and only properties from columns that match the properties parameter.
-    // filter has same format as other filters: {property: [values]}
-
-    var values = getValues(sheetName);
-    var allPropertyNames = values.shift();
-    if (desiredProperties == undefined) {
-        desiredProperties = allPropertyNames;
-    }
-    // Get column indices corresponding to the properties parameter.
-    var columnIndicesToReturn = [];
-    for (var i=0; i<desiredProperties.length; i++) {
-      var index = allPropertyNames.indexOf(desiredProperties[i]);
-      if (index != -1) {
-        columnIndicesToReturn.push(index);
-      }
-    }
-    // Construct object filter columns whose items are of form
-    // columnNumber: [values]
-    var filterColumns = {};
-    for (var filterProperty in filter) {
-      var columnIndex = allPropertyNames.indexOf(filterProperty);
-      if (columnIndex != -1) {
-        filterColumns[columnIndex] = filter[filterProperty];
-      }
-    }
-    // Now construct the array of objects.  
-    var objects = [];
-    for (var i = 0; i < values.length; i++) {
-      if (rowMatchesIndexedFilterObject(values[i], filterColumns)) {
-        var object = {};
-        for (var j=0; j < columnIndicesToReturn.length; j++) {  
-          var column = columnIndicesToReturn[j];
-          object[allPropertyNames[column]] = values[i][column];
-        }
-        objects.push(object);
-      }
-    }
-    return objects;
-  }
-
-  function rowMatchesIndexedFilterObject(rowArray, filterObject) {
-    // Check whether the row of values matches the filter.
-    // They match if for each column index in the filter, the value in
-    // the row at that column matches one of the values in the filter 
-    for (var columnIndex in filterObject) {
-      if (filterObject[columnIndex].indexOf(rowArray[columnIndex]) == -1) { return false; }
-    }
-    return true;
-  }
-  
   function getSheet(sheetName) {
     return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   }
@@ -210,16 +140,41 @@ var MergeDb = (function () {
     // Return a string array of the headers as they appear on the sheet.
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     return sheet.getDataRange().getValues()[0];
-  } 
-  
+  }
+
+  function getMainEntryProperties(sheetObject) {
+    var headersArray = sheetObject.getDataRange().getValues().slice(0,2);
+    return headersArray[0].filter(function(item, index) {
+      return headersArray[1][index] == 'TRUE';
+    });
+  }
+
+  /* Get data from merged sheet and organize it. */
+  function getJson(sheetObject) {
+    // Returns the data from sheetObject, hashed into the json structure 
+    // specified in the specs.
+    var array = MergeDb.getRows(sheetObject, {});
+    var hashedData = array.reduce(function(accumulator, object, index) {
+      var orderKey = object['orders_orderKey'];
+      if (accumulator[orderKey] == undefined) {
+        // Template for desired structure.
+        accumulator[orderKey] = [object];
+      } else {
+        accumulator[orderKey].push(object);
+      }
+      return accumulator;
+    }, {});
+    return hashedData;
+  }
+
   return {
     getRows: getRows,
-    getObjectsWithFilter: getObjectsWithFilter,
     addRows: addRows,
-    setRows: setRows,
-    delRows: delRows,
+    fillRow: fillRow,
+    getHeaders: getHeaders,
+    getJson: getJson,
     leftJoin: leftJoin,
-    hashArr: hashArr
+    getMainEntryProperties: getMainEntryProperties
   }
 })();
 

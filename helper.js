@@ -1,7 +1,7 @@
 /* Helper functions */
 
-function compileHashedData(sheetObject, key) {
-  // Returns the data from sheetName, hashed by key.
+function compileHashedGsdbData(sheetObject, key) {
+  // Returns the data from sheetObject, hashed by key.
   // Key may not be unique per row; therefore each item is an array of objects that correspond to that value of key.
   var array = GsDb.getRows(sheetObject, {});
   var hashedData = array.reduce(function(accumulator, object, index) {
@@ -11,6 +11,20 @@ function compileHashedData(sheetObject, key) {
     } else {
       accumulator[propertyName] = accumulator[propertyName].concat(object);
     }
+    return accumulator;
+  }, {});
+  return hashedData;
+}
+
+/**
+ * Hash an array by the given unique key.
+ * @param {Array} array 
+ * @param {string} key 
+ */
+function hashArray(array, key) {
+  var hashedData = array.reduce(function(accumulator, object, index) {
+    var propertyName = object[key];
+      accumulator[propertyName] = object;
     return accumulator;
   }, {});
   return hashedData;
@@ -38,11 +52,11 @@ function getWorkingRowNumber() {
 // we changed keys part way through the project.
 function getOrdersData() {
   var sheet = SpreadsheetApp.openById(ORDERS_SHEET_ID).getSheets()[0];
-  return compileHashedData(sheet, 'orderKey');
+  return compileHashedGsdbData(sheet, 'orders_orderKey');
 }
 function getShipmentsData() {
   var sheet = SpreadsheetApp.openById(SHIPMENTS_SHEET_ID).getSheets()[0];
-  return compileHashedData(sheet, 'orderKey');
+  return compileHashedGsdbData(sheet, 'orders_orderKey');
 }
 
 // Check whether an order and a shipment correspond.
@@ -50,4 +64,44 @@ function orderMatchesShipment(orderItem, shipmentItem) {
   return (orderItem.items_name == shipmentItem.shipmentItems_name 
           && orderItem.items_quantity == shipmentItem.shipmentItems_quantity
           && orderItem.orderNumber == shipmentItem.orderNumber);
+}
+
+// In a list of objects, determine if the key: value pair exists in at least one.
+function valueFoundInObjectList(key, value, array) {
+  for (var i=0; i<array.length; i++) {
+    if (array[i][key] === value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function setTimeStamp() {
+  var now = new Date();
+  var timeStamp = [["Last updated:", now]];
+  MERGED_SHEET.getRange(MERGED_SHEET_HEADER_ROW_COUNT-1,1,1,2).setValues(timeStamp);
+  MERGED_SHEET.getRange(MERGED_SHEET_HEADER_ROW_COUNT-1,2,1,1).setNumberFormat('m/d/yy h:mm');
+}
+
+function getOrderHeaderFields() {}
+
+/* Get the (0-based) column index for a given property
+ * in the merged sheet.
+ */
+function getColumnIndex(property) {
+  return MERGED_SHEET_HEADERS.indexOf(property);
+}
+
+// Construct an array whose values come from rowObject, 
+// and correspond with the property names in headers.
+function constructArrayFromObject(headers, rowObject) {
+  var arrayData = [];
+  for (var i=0; i<headers.length; i++) {
+    if (rowObject.hasOwnProperty(headers[i])) {
+      arrayData.push(rowObject[headers[i]]);
+    } else {
+      arrayData.push(""); 
+    }
+  }
+  return arrayData;
 }

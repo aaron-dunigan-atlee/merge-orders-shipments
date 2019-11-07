@@ -2,6 +2,64 @@
  * Functions related to inserting and formatting data from the shipments sheet. 
  */
 
+function addShipmentFormulas(rowDataToAppend, rowObject) {
+  // Add the formulas for columns that don't contain static data.
+  rowDataToAppend = addDimensions(rowDataToAppend, rowObject);
+  rowDataToAppend = addWeight(rowDataToAppend, rowObject);
+  rowDataToAppend = addCarrierService(rowDataToAppend, rowObject);  
+  rowDataToAppend = addQuarterFormula(rowDataToAppend);
+  //rowDataToAppend = setOrderValuesForUnmatchedShipment(rowDataToAppend, orderDate);
+  return rowDataToAppend;
+}
+
+function addDimensions(rowDataArray, shipmentObject) {
+  // Add dimensions compiled into one entry.
+  rowDataArray[DIMENSIONS_COLUMN_INDEX] = shipmentObject.shipments_dimensions_length + 'X' 
+    + shipmentObject.shipments_dimensions_width + 'X' 
+    + shipmentObject.shipments_dimensions_height;
+  return rowDataArray;
+}
+
+function addWeight(rowDataArray, shipmentObject) {
+  // Weights are given in ounces.  Convert to pounds and ounces.
+  var weightPounds = Math.floor(shipmentObject.shipments_weight_value / 16);
+  var weightOunces = shipmentObject.shipments_weight_value % 16;
+  rowDataArray[WEIGHT_COLUMN_INDEX] = weightPounds + ' lb ' + weightOunces + ' oz';
+  return rowDataArray;
+}
+
+function addCarrierService(rowDataArray, shipmentObject) {
+  // Split serviceCode into carrier and service, and insert into row.
+  var splitServiceCode = shipmentObject.shipments_serviceCode.split('_',2);
+  rowDataArray[CARRIER_USED_COLUMN_INDEX] = splitServiceCode[0];
+  rowDataArray[CARRIER_COLUMN_INDEX] = splitServiceCode[0];
+  rowDataArray[SERVICE_USED_COLUMN_INDEX] = splitServiceCode[1];
+  rowDataArray[SERVICE_COLUMN_INDEX] = splitServiceCode[1];
+  return rowDataArray;
+}
+
+function addQuarterFormula(rowDataArray) {
+  // Get the cell reference for the shipment date.
+  var columnOffset = SHIP_DATE_COLUMN_INDEX - QUARTER_COLUMN_INDEX;
+  var shipDateCellReference = 'INDIRECT("R[0]C[' + columnOffset + ']", FALSE)'; 
+  // Create a formula for looking up the corresponding store name.
+  rowDataArray[QUARTER_COLUMN_INDEX] = '="Q"&roundup(month(' + shipDateCellReference + ')/3)&" "&year(' + shipDateCellReference + ')';
+  return rowDataArray;
+}
+
+function applyShipmentItemFormats(rowNumber) {
+  // No formats to apply in shipment items.
+}
+
+// Set values for an unmatched shipment, in the orders section of the sheet.
+function setOrderValuesForUnmatchedShipment(rowDataToAppend, orderDate) {
+  rowDataToAppend[ITEM_SHIPPED_COLUMN_INDEX] = 'TRUE';
+  rowDataToAppend[ORDER_FULFILLED_COLUMN_INDEX] = ' ';
+  rowDataToAppend[ORDER_DATE_COLUMN_INDEX] = orderDate;
+  rowDataToAppend[ITEM_NAME_COLUMN_INDEX] = "!extra shipment data: couldn't match with an order";
+  return rowDataToAppend;
+}
+
 // For a given order number and item in that order, find the corresponding data from the 
 // Shipments tab and add it to the row data.
 function addShipmentData(rowDataToAppend, orderNumber, orderItem, rowNumber, shipmentsData) {
@@ -86,51 +144,4 @@ function appendRowsForShipmentObject(shipmentObject, orderDate) {
       MERGED_DATA.push(rowDataToAppend);
     }
   }
-}
-
-function addDimensions(rowDataArray, shipmentObject) {
-  // Add dimensions compiled into one entry.
-  rowDataArray[DIMENSIONS_COLUMN_INDEX] = shipmentObject.dimensions_length + 'X' 
-    + shipmentObject.dimensions_width + 'X' 
-    + shipmentObject.dimensions_height;
-  return rowDataArray;
-}
-
-function addWeight(rowDataArray, shipmentObject) {
-  // Weights are given in ounces.  Convert to pounds and ounces.
-  var weightPounds = Math.floor(shipmentObject.weight_value / 16);
-  var weightOunces = shipmentObject.weight_value % 16;
-  rowDataArray[WEIGHT_COLUMN_INDEX] = weightPounds + ' lb ' + weightOunces + ' oz';
-  return rowDataArray;
-}
-
-function addCarrierService(rowDataArray, shipmentObject) {
-  // Split serviceCode into carrier and service, and insert into row.
-  var splitServiceCode = shipmentObject.serviceCode.split('_',2);
-  rowDataArray[CARRIER_USED_COLUMN_INDEX] = splitServiceCode[0];
-  rowDataArray[CARRIER_COLUMN_INDEX] = splitServiceCode[0];
-  rowDataArray[SERVICE_USED_COLUMN_INDEX] = splitServiceCode[1];
-  rowDataArray[SERVICE_COLUMN_INDEX] = splitServiceCode[1];
-  return rowDataArray;
-}
-
-function addQuarterFormula(rowNumber, rowDataArray) {
-  // Get the cell reference, e.g. H3, for the shipment date.
-  var shipDateCellReference = SHIP_DATE_COLUMN_LETTER + rowNumber;
-  // Create a formula for looking up the corresponding store name.
-  rowDataArray[QUARTER_COLUMN_INDEX] = '="Q"&roundup(month(' + shipDateCellReference + ')/3)&" "&year(' + shipDateCellReference + ')';
-  return rowDataArray;
-}
-
-function applyShipmentItemFormats(rowNumber) {
-  // No formats to apply in shipment items.
-}
-
-// Set values for an unmatched shipment, in the orders section of the sheet.
-function setOrderValuesForUnmatchedShipment(rowDataToAppend, orderDate) {
-  rowDataToAppend[ITEM_SHIPPED_COLUMN_INDEX] = 'TRUE';
-  rowDataToAppend[ORDER_FULFILLED_COLUMN_INDEX] = ' ';
-  rowDataToAppend[ORDER_DATE_COLUMN_INDEX] = orderDate;
-  rowDataToAppend[ITEM_NAME_COLUMN_INDEX] = "!extra shipment data: couldn't match with an order";
-  return rowDataToAppend;
 }
