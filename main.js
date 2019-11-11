@@ -1,6 +1,7 @@
 /* The main function: get all the data and merge it into one sheet */
 function populateMergedSheet() {
   initializeGlobals();
+  var needToAddRows = false;
   // Go through shipments and add to existing orders where needed.
   for (var orderNumber in shipmentsData) {
     // Proceed if orderNumber is not blank.  We were picking up noise from empty rows.
@@ -18,17 +19,26 @@ function populateMergedSheet() {
       // add it to pending changes.
       if (existingMergedData[orderNumber] == undefined) {
         addOrderToMergedUpdate(orderNumber); 
+        needToAddRows = true;
       } 
     }
   }
-  // Write the new orders to the sheet.
-  MergeDb.addRows(MERGED_SHEET, mergedDataToAdd);
+  // Write the new orders to the sheet, if there are any.
+  if (needToAddRows) {
+    MergeDb.addRows(MERGED_SHEET_NAME, mergedDataToAdd);
+  }
+  // Mark as updated.
+  setTimeStamp();
 }
 
 // Add data if it's not part of the existing spreadsheet.
 function addOrderToMergedUpdate(orderNumber) {
-  // Join orders and shipments.
-  var joinedOrder = MergeDb.leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'orders_items_orderItemId','shipments_shipmentItems_orderItemId');
+  // Join orders and shipments, if shipments exist.
+  if (shipmentsData[orderNumber] == undefined) {
+    var joinedOrder = ordersData[orderNumber];
+  } else {
+    var joinedOrder = MergeDb.leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'orders_items_orderItemId','shipments_shipmentItems_orderItemId');
+  }
   mergedDataToAdd[orderNumber] = joinedOrder;
 }
 
@@ -42,25 +52,19 @@ function updateShipmentsInMerged(orderNumber) {
     // Keying by shipmentItems_orderItemId.  Very rarely, there are duplicates.  
     var shipmentItemId = shipmentObject['shipments_shipmentItems_orderItemId']; 
     if (!hasShipmentData(existingMergedObject, shipmentItemId)) {
+      // First, add values/formulas for properties with merged_headerName (dimensions, weight, etc.)
+      var rowArray = constructItemRow(shipmentObject);
+      for (var column=0; column<MERGED_SHEET_HEADERS.length; column++) {
+        var headerName = MERGED_SHEET_HEADERS[column];
+        if (headerName.slice(0,7) == 'merged_') {
+          shipmentObject[headerName] = rowArray[column];
+        }
+      }
       // Add this shipment to the spreadsheet under the correct order. 
-      var filter = {'orders_items_orderItemId': shipmentObject['shipments_shipmentItems_orderItemId']};
+      var filter = {'orders_items_orderItemId': [shipmentObject['shipments_shipmentItems_orderItemId']]};
       MergeDb.fillRow(MERGED_SHEET_NAME, filter, shipmentObject);
     }
   }
-}
-
-function initializeGlobals() {
-  // Initialize global variables.
-  mergedDataToUpdate = {};
-  mergedDataToAdd = {};
-  ordersData = getOrdersData();
-  shipmentsData = getShipmentsData();
-  existingMergedData = MergeDb.getJson(MERGED_SHEET);
-}
-
-function writeUpdatesToMergedSheet() {
-  // MergeDb.setRows(mergedDataToUpdate);
-  MergeDb.addRows(mergedDataToAdd);
 }
 
 function hasShipmentData(orderArray, orderItemId) {
@@ -100,10 +104,10 @@ function updateOrdersInMerged(orderNumber) {
 // because .insertCheckboxes() sets the cell value to false.
 function setMergedSheetFormats(row, height) {
   // Apply date format to whole date column.
-  MERGED_SHEET.getRange(row + 1, ORDER_DATE_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).setNumberFormat('m/d/yyy');
+  MERGED_SHEET.getRange(row, ORDER_DATE_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).setNumberFormat('m/d/yyy');
   // Apply checkboxes to Fulfilled and Shipped columns.
-  MERGED_SHEET.getRange(row + 1, ORDER_FULFILLED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
-  MERGED_SHEET.getRange(row + 1, ITEM_SHIPPED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
+  MERGED_SHEET.getRange(row, ORDER_FULFILLED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
+  MERGED_SHEET.getRange(row, ITEM_SHIPPED_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).insertCheckboxes();
   // Don't extend order keys outside the cell.
-  MERGED_SHEET.getRange(row + 1, ORDER_KEY_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+  MERGED_SHEET.getRange(row, ORDER_KEY_COLUMN_INDEX + COLUMN_INDEX_OFFSET, height, 1).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
 }

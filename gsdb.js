@@ -9,8 +9,12 @@ because I've run this code first.
 
 var GsDb = (function () {
 
-  function getRows(sheetObject, filterObject) {
-    var objects = getObjects(sheetObject);
+  function getRows(sheetObject, filterObject, prefix) {
+    // Optional prefix to put in front of property names.
+    if (prefix == undefined) {
+      prefix = '';
+    }
+    var objects = getObjects(sheetObject, prefix);
     return objects.filter(function(object) {
       return objectMatchesFilterObject(object, filterObject)
     });
@@ -22,10 +26,8 @@ var GsDb = (function () {
   
   function delRows() {  }
   
-  function getObjects(sheetObject) {
+  function getObjects(sheetObject, prefix) {
     var values = getValues(sheetObject);
-    // Attribute names will be of the form sheetname_headerName
-    var prefix = sheetObject.getName().toLowerCase() + '_';
     var headers = values.shift();
     // Create an object for each row.
     var objects = [];

@@ -1,9 +1,9 @@
 /* Helper functions */
 
-function compileHashedGsdbData(sheetObject, key) {
+function compileHashedGsdbData(sheetObject, key, prefix) {
   // Returns the data from sheetObject, hashed by key.
   // Key may not be unique per row; therefore each item is an array of objects that correspond to that value of key.
-  var array = GsDb.getRows(sheetObject, {});
+  var array = GsDb.getRows(sheetObject, {}, prefix);
   var hashedData = array.reduce(function(accumulator, object, index) {
     var propertyName = object[key];
     if (accumulator[propertyName] == undefined) {
@@ -52,11 +52,12 @@ function getWorkingRowNumber() {
 // we changed keys part way through the project.
 function getOrdersData() {
   var sheet = SpreadsheetApp.openById(ORDERS_SHEET_ID).getSheets()[0];
-  return compileHashedGsdbData(sheet, 'orders_orderKey');
+  return compileHashedGsdbData(sheet, 'orders_orderKey', 'orders_');
 }
+
 function getShipmentsData() {
   var sheet = SpreadsheetApp.openById(SHIPMENTS_SHEET_ID).getSheets()[0];
-  return compileHashedGsdbData(sheet, 'orders_orderKey');
+  return compileHashedGsdbData(sheet, 'shipments_orderKey', 'shipments_');
 }
 
 // Check whether an order and a shipment correspond.
@@ -79,8 +80,9 @@ function valueFoundInObjectList(key, value, array) {
 function setTimeStamp() {
   var now = new Date();
   var timeStamp = [["Last updated:", now]];
-  MERGED_SHEET.getRange(MERGED_SHEET_HEADER_ROW_COUNT-1,1,1,2).setValues(timeStamp);
-  MERGED_SHEET.getRange(MERGED_SHEET_HEADER_ROW_COUNT-1,2,1,1).setNumberFormat('m/d/yy h:mm');
+  SpreadsheetApp.getActive().getRangeByName('Timestamp')
+    .setValues(timeStamp)
+    .setNumberFormat('m/d/yy h:mm');
 }
 
 function getOrderHeaderFields() {}

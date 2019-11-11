@@ -11,10 +11,11 @@
 function constructOrderHeaderRow(rowObject, orderSize) {
   // Create a blank array where we can insert data.
   var rowDataToAppend = EMPTY_ROW.slice();
-  var mainEntryProperties = MergeDb.getMainEntryProperties();
-  for (var property in mainEntryProperties) {
+  // Fill in only the properties that are marked as header properties.
+  for (var i=0; i<MAIN_ENTRY_PROPERTIES.length; i++) {
+    var property = MAIN_ENTRY_PROPERTIES[i];
     columnNumber = getColumnIndex(property);
-    if (columnNumber != -1) {
+    if (columnNumber != -1 && rowObject.hasOwnProperty(property)) {
       rowDataToAppend[columnNumber] = rowObject[property];
     }
   }
@@ -60,8 +61,10 @@ function addOrderTotalFormula(rowDataArray, orderSize) {
 
 function addOrderDate(rowDataArray, orderObject) {
   // Remove the time data from the date field and add to the row data.
-  var orderDate = orderObject.orders_orderDate.slice(0,10); // Just get first 10 characters, e.g. '2019-04-10'
-  rowDataArray[ORDER_DATE_COLUMN_INDEX] = orderDate;
+  var orderDate = orderObject.orders_orderDate;
+  if (orderDate != undefined) {
+    rowDataArray[ORDER_DATE_COLUMN_INDEX] = orderDate.slice(0,10); // Just get first 10 characters, e.g. '2019-04-10';
+  }
   return rowDataArray;
 }
 
@@ -80,7 +83,7 @@ function constructItemRow(rowObject) {
   rowDataToAppend = addItemTotalFormula(rowDataToAppend);
   // If there is a shipment present, add formulas.
   var orderItemId = rowObject.shipments_shipmentItems_orderItemId
-  if (orderItemId != undefined && orderItemId.trim() != '') {
+  if (orderItemId != undefined && orderItemId != '') {
     rowDataToAppend = addShipmentFormulas(rowDataToAppend, rowObject);
   }
   // Row data is ready: write it to the array.

@@ -29,8 +29,8 @@ var MergeDb = (function () {
     }
     var firstBlankRow = sheet.getLastRow() + 1;
     // Set formats and write to sheet.
-    setMergedSheetFormats(row, matrixToAppend.length);
-    appendMatrix(sheet, row, matrixToAppend);
+    setMergedSheetFormats(firstBlankRow, matrixToAppend.length);
+    appendMatrix(sheet, firstBlankRow, matrixToAppend);
   }
 
   // Append a matrix of data at the row indicated.
@@ -49,8 +49,7 @@ var MergeDb = (function () {
     // If a matching row is not found, a message will be logged.
     
     var sheet = getSheet(sheetName);
-    var headers = getHeadersAsPropertyNames(sheetName);
-    var dbObjects = getObjects(sheetName);
+    var dbObjects = getObjects(sheet);
     var offsetHeaderRow = 1;
     var offsetZeroBasedIndex = 1;
 
@@ -61,12 +60,12 @@ var MergeDb = (function () {
         foundMatchingRow = true; 
         var rowToUpdate = i + MERGED_SHEET_HEADER_ROW_COUNT + ROW_INDEX_OFFSET;
         var rowRange = sheet.getRange(rowToUpdate, 1, 1, sheet.getLastColumn());
-        var rowValues = rowRange.getValues();
-        var rowFormulas = rowRange.getFormulas();
+        var rowValues = rowRange.getValues()[0];
+        var rowFormulas = rowRange.getFormulas()[0];
         for (var column=1; column<=rowValues.length; column++) {
           var columnIndex = column - COLUMN_INDEX_OFFSET;
-          if (rowValues[columnIndex].trim() == '' && rowFormulas[columnIndex].trim() == '') {
-            var property = headers[columnIndex];
+          if (rowValues[columnIndex] == '' && rowFormulas[columnIndex] == '') {
+            var property = MERGED_SHEET_HEADERS[columnIndex];
             if (rowObject.hasOwnProperty(property)) {
               // Set one cell at a time.  Inefficient, but it can't be avoided.
               sheet.getRange(rowToUpdate, column).setValue(rowObject[property]);
@@ -76,7 +75,7 @@ var MergeDb = (function () {
       }
     }
     if (!foundMatchingRow) {
-      var message = "Could not find row in merged sheet where " + filterObject;
+      var message = "Could not find row in merged sheet where " + JSON.stringify(filterObject);
       Logger.log(message);
     } 
   }
@@ -138,14 +137,14 @@ var MergeDb = (function () {
  
   function getHeaders(sheetName) {
     // Return a string array of the headers as they appear on the sheet.
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    var sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
     return sheet.getDataRange().getValues()[0];
   }
 
   function getMainEntryProperties(sheetObject) {
     var headersArray = sheetObject.getDataRange().getValues().slice(0,2);
     return headersArray[0].filter(function(item, index) {
-      return headersArray[1][index] == 'TRUE';
+      return headersArray[1][index] == true;
     });
   }
 
