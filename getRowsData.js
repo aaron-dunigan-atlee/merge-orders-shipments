@@ -1,5 +1,5 @@
 // getRowsData iterates row by row in the input range and returns an array of objects.
-// Each object contains all the data for a given row, indexed by its normalized column name.
+// Each object contains all the data for a given row, indexed by its column name.
 // Arguments:
 //   - sheet: the sheet object that contains the data to be processed
 //   - range: the exact range of cells where the data is stored
@@ -13,6 +13,8 @@
  * @param {range} range where the data is in the sheet, headers are above;  
  * @param {row} 
  */
+
+
 function getRowsData(sheet, range, columnHeadersRowIndex, displayValues, getBlanks) {
   displayValues = displayValues || false;
   getBlanks = getBlanks || false;
@@ -25,10 +27,11 @@ function getRowsData(sheet, range, columnHeadersRowIndex, displayValues, getBlan
   var numColumns = dataRange.getLastColumn() - dataRange.getColumn() + 1;
   var headersRange = sheet.getRange(headersIndex, dataRange.getColumn(), 1, numColumns);
   var headers = headersRange.getValues()[0];
+  // NOTE THAT WE ARE NOT NORMALIZING HEADERS HERE.  HEADERS ARE ALREADY FORMATTED IN THE SHEET.
   if (displayValues == true){
-    return getObjects_(dataRange.getDisplayValues(), normalizeHeaders(headers), getBlanks);
+    return getObjects_(dataRange.getDisplayValues(), headers, getBlanks);
   } else {
-    return getObjects_(dataRange.getValues(), normalizeHeaders(headers), getBlanks);
+    return getObjects_(dataRange.getValues(), headers, getBlanks);
   }
 }
 
@@ -63,56 +66,6 @@ function getObjects_(data, keys, getBlanks) {
 }
 
 
-// Returns an Array of normalized Strings.
-// Empty Strings are returned for all Strings that could not be successfully normalized.
-// Arguments:
-//   - headers: Array of Strings to normalize
-function normalizeHeaders(headers) {
-  var keys = [];
-  for (var i = 0; i < headers.length; ++i) {
-    var key = normalizeHeader(headers[i]);
-    if (key == undefined || key.length == 0) { 
-      key = 'column' + i;
-    } 
-    keys.push(key);
-  }
-  return keys;
-}
-
-// Normalizes a string, by removing all alphanumeric characters and using mixed case
-// to separate words. The output will always start with a lower case letter.
-// This function is designed to produce JavaScript object property names.
-// Arguments:
-//   - header: string to normalize
-// Examples:
-//   "First Name" -> "firstName"
-//   "Market Cap (millions) -> "marketCapMillions
-//   "1 number at the beginning is ignored" -> "numberAtTheBeginningIsIgnored"
-function normalizeHeader(header) {
-  var key = "";
-  var upperCase = false;
-  for (var i = 0; i < header.length; ++i) {
-    var letter = header[i];
-    if (letter == " " && key.length > 0) {
-      upperCase = true;
-      continue;
-    }
-    if (!isAlnum_(letter)) {
-      continue;
-    }
-    if (key.length == 0 && isDigit_(letter)) {
-      continue; // first character must be a letter
-    }
-    if (upperCase) {
-      upperCase = false;
-      key += letter.toUpperCase();
-    } else {
-      key += letter.toLowerCase();
-    }
-  }
-  return key;
-}
-
 // Returns true if the cell where cellData was read from is empty.
 // Arguments:
 //   - cellData: string
@@ -144,7 +97,8 @@ function isDigit_(char) {
 function setRowsData(sheet, objects, optHeadersRange, optFirstDataRowIndex) {
   var headersRange = optHeadersRange || sheet.getRange(1, 1, 1, sheet.getMaxColumns());
   var firstDataRowIndex = optFirstDataRowIndex || headersRange.getRowIndex() + 1;
-  var headers = normalizeHeaders(headersRange.getValues()[0]);
+  // NOTE THAT WE ARE NOT NORMALIZING HEADERS HERE.  HEADERS ARE ALREADY FORMATTED IN THE SHEET.
+  var headers = headersRange.getValues()[0];
 
   var data = [];
   for (var i = 0; i < objects.length; ++i) {
@@ -199,6 +153,7 @@ function writeNewData(sheet, data) {
   setRowsData(sheet, data)
 }
 
+
 /**
  * Set rows data, but preserve any formulas in the sheet, rather than 
  * overwriting with values.
@@ -206,7 +161,8 @@ function writeNewData(sheet, data) {
 function setRowsDataKeepFormulas(sheet, objects, optHeadersRange, optFirstDataRowIndex) {
   var headersRange = optHeadersRange || sheet.getRange(1, 1, 1, sheet.getMaxColumns());
   var firstDataRowIndex = optFirstDataRowIndex || headersRange.getRowIndex() + 1;
-  var headers = normalizeHeaders(headersRange.getValues()[0]);
+  // NOTE THAT WE ARE NOT NORMALIZING HEADERS HERE.  HEADERS ARE ALREADY FORMATTED IN THE SHEET.
+  var headers = headersRange.getValues()[0];
 
   var destinationRange = sheet.getRange(firstDataRowIndex, headersRange.getColumnIndex(), 
                                         objects.length, headers.length);

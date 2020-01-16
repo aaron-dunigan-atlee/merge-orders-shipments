@@ -82,24 +82,7 @@ var MergeDb = (function () {
   
   function delRows() {  }
   
-  function leftJoin(leftObjects, rightObjects, leftKey, rightKey) {
-    var hashRightObjects = hashArr(rightObjects, rightKey);
-    return leftObjects.map(function(lObj) {
-      var rObj = hashRightObjects[lObj[leftKey]];
-      for (var property in rObj) {
-        lObj[property] = rObj[property]
-      }
-      return lObj;
-    });
-  }
   
-  function hashArr(array, key) {
-    return array.reduce(function(accumulator, object, index) {
-      var propertyName = object[key];
-      accumulator[propertyName] = object;
-      return accumulator;
-    }, {});
-  }
   
   function getObjects(sheetObject) {
     var values = getValues(sheetObject);
@@ -172,7 +155,6 @@ var MergeDb = (function () {
     fillRow: fillRow,
     getHeaders: getHeaders,
     getJson: getJson,
-    leftJoin: leftJoin,
     getMainEntryProperties: getMainEntryProperties
   }
 })();

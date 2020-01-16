@@ -71,7 +71,9 @@ function initializeGlobals() {
   //Logger.log(ordersData);
   shipmentsData = getShipmentsData();
   //Logger.log(shipmentsData);
+  console.time('get existingMergedData')
   existingMergedData = MergeDb.getJson(MERGED_SHEET);
+  console.timeEnd('get existingMergedData')
   //Logger.log(existingMergedData);
   MERGED_SHEET_HEADERS = MergeDb.getHeaders(MERGED_SHEET_NAME);
   MAIN_ENTRY_PROPERTIES = MergeDb.getMainEntryProperties(MERGED_SHEET);

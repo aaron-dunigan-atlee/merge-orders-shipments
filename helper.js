@@ -51,13 +51,19 @@ function getWorkingRowNumber() {
 // Note that throughout the code, the variable 'orderNumber' is really an orderKey, because
 // we changed keys part way through the project.
 function getOrdersData() {
+  console.time('getOrdersData')
   var sheet = SpreadsheetApp.getActive().getSheetByName('Orders');
-  return compileHashedGsdbData(sheet, 'orders_orderKey', 'orders_');
+  var hash = compileHashedGsdbData(sheet, 'orders_orderKey', 'orders_');
+  console.timeEnd('getOrdersData')
+  return hash
 }
 
 function getShipmentsData() {
+  console.time('getShipmentsData')
   var sheet = SpreadsheetApp.getActive().getSheetByName('Shipments');
-  return compileHashedGsdbData(sheet, 'shipments_orderKey', 'shipments_');
+  var hash = compileHashedGsdbData(sheet, 'shipments_orderKey', 'shipments_');
+  console.timeEnd('getShipmentsData')
+  return hash
 }
 
 // Check whether an order and a shipment correspond.
@@ -106,4 +112,52 @@ function constructArrayFromObject(headers, rowObject) {
     }
   }
   return arrayData;
+}
+
+function leftJoin(leftObjects, rightObjects, leftKey, rightKey) {
+  var hashRightObjects = hashArr(rightObjects, rightKey);
+  return leftObjects.map(function(lObj) {
+    var rObj = hashRightObjects[lObj[leftKey]];
+    for (var property in rObj) {
+      lObj[property] = rObj[property]
+    }
+    return lObj;
+  });
+}
+
+function fillRow(dbObjects, filterObject, rowObject) {
+  // Update a single row in the data.  Cells with prior values will not be replaced.
+  // Values will be taken from rowObject, 
+  // where attribute names match column headers.  Attributes that are
+  // not in the headers will be ignored.  Rows to be changed will be 
+  // determined by filterObject, which should be one of the headers/attributes
+  // If a matching row is not found, a message will be logged.
+
+  var offsetHeaderRow = 1;
+  var offsetZeroBasedIndex = 1;
+  
+  var foundMatchingRow = false;
+  // Iterate from end for more efficiency.
+  for (var i = dbObjects.length - 1; i >= 0; i--) {
+    if (objectMatchesFilterObject(dbObjects[i], filterObject)) { 
+      foundMatchingRow = true; 
+      for (var property in rowObject) {
+        if (dbObjects[i][property] == undefined || dbObjects[i][property] == '') {
+          dbObjects[i][property] = rowObject[property]
+        }
+      }
+      break;
+    }
+  }
+  if (!foundMatchingRow) {
+    var message = "Could not find row in merged sheet where " + JSON.stringify(filterObject);
+    console.log(message);
+  } 
+}
+
+function objectMatchesFilterObject(object, filterObject) {
+  for (var property in filterObject) {
+    if (filterObject[property].indexOf(object[property]) == -1) { return false; }
+  }
+  return true;
 }

@@ -1,17 +1,32 @@
 /* The main function: get all the data and merge it into one sheet */
 function populateMergedSheet() {
+  console.log('Merging sheets...')
+  console.time('initialize globals')
   initializeGlobals();
+  console.timeEnd('initialize globals')
   var needToAddRows = false;
   // Go through shipments and add to existing orders where needed.
+  console.time('addOldOrderDetails')
+  // This is a bit of a patch, but trying to avoid timeouts.
+  var mergedRowsData = getRowsData(
+    MERGED_SHEET,
+    MERGED_SHEET.getRange(MERGED_SHEET_HEADER_ROW_COUNT + 1, 1, MERGED_SHEET.getLastRow() - MERGED_SHEET_HEADER_ROW_COUNT, MERGED_SHEET.getLastColumn()),
+    1,
+    false,
+    true
+  )
   for (var orderNumber in shipmentsData) {
     // Proceed if orderNumber is not blank.  We were picking up noise from empty rows.
     if (orderNumber) {
       if (existingMergedData[orderNumber] != undefined) {
-        updateShipmentsInMerged(orderNumber);
+        updateShipmentsInMerged(orderNumber, mergedRowsData);
       }
     }
   }
+  setRowsDataKeepFormulas(MERGED_SHEET, mergedRowsData, MERGED_SHEET.getRange("1:1"), MERGED_SHEET_HEADER_ROW_COUNT + 1)
+  console.timeEnd('addOldOrderDetails')
   // Go through orders and add new ones to the pending additions.
+  console.time('addNewOrders')
   for (var orderNumber in ordersData) {
     // Proceed if orderNumber is not blank.  We were picking up noise from empty rows.
     if (orderNumber) {
@@ -23,10 +38,13 @@ function populateMergedSheet() {
       } 
     }
   }
+  console.timeEnd('addNewOrders')
   // Write the new orders to the sheet, if there are any.
+  console.time('update sheet')
   if (needToAddRows) {
     MergeDb.addRows(MERGED_SHEET_NAME, mergedDataToAdd);
   }
+  console.timeEnd('update sheet')
   // Mark as updated.
   setTimeStamp();
 }
@@ -37,12 +55,12 @@ function addOrderToMergedUpdate(orderNumber) {
   if (shipmentsData[orderNumber] == undefined) {
     var joinedOrder = ordersData[orderNumber];
   } else {
-    var joinedOrder = MergeDb.leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'orders_items_orderItemId','shipments_shipmentItems_orderItemId');
+    var joinedOrder = leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'items_1_orderItemId','shipments_shipmentItems_orderItemId');
   }
   mergedDataToAdd[orderNumber] = joinedOrder;
 }
 
-function updateShipmentsInMerged(orderNumber) {
+function updateShipmentsInMerged(orderNumber, mergedRowsData) {
   // existingMergedObject will be an array of row objects.
   var existingMergedObject = existingMergedData[orderNumber];
   // Iterate through shipments with this orderKey.
@@ -52,6 +70,7 @@ function updateShipmentsInMerged(orderNumber) {
     // Keying by shipmentItems_orderItemId.  Very rarely, there are duplicates.  
     var shipmentItemId = shipmentObject['shipments_shipmentItems_orderItemId']; 
     if (!hasShipmentData(existingMergedObject, shipmentItemId)) {
+      console.log("Updating shipment info for id %s", shipmentItemId);
       // First, add values/formulas for properties with merged_headerName (dimensions, weight, etc.)
       var rowArray = constructItemRow(shipmentObject);
       for (var column=0; column<MERGED_SHEET_HEADERS.length; column++) {
@@ -61,8 +80,9 @@ function updateShipmentsInMerged(orderNumber) {
         }
       }
       // Add this shipment to the spreadsheet under the correct order. 
-      var filter = {'orders_items_orderItemId': [shipmentObject['shipments_shipmentItems_orderItemId']]};
-      MergeDb.fillRow(MERGED_SHEET_NAME, filter, shipmentObject);
+      var filter = {'items_1_orderItemId': [shipmentObject['shipments_shipmentItems_orderItemId']]};
+      // MergeDb.fillRow(MERGED_SHEET_NAME, filter, shipmentObject);
+      fillRow(mergedRowsData, filter, shipmentObject);
     }
   }
 }
@@ -71,7 +91,7 @@ function hasShipmentData(orderArray, orderItemId) {
   // 1. Find item in orderArray that has items_orderItemId equal to orderItemId
   // 2. Check if this item already has a value for shipmentItems_orderItemId.
   for (var i=0; i<orderArray.length; i++) {
-    if (orderArray[i].orders_items_orderItemId == orderItemId) {
+    if (orderArray[i].items_1_orderItemId == orderItemId) {
       if (orderArray[i].shipments_shipmentItems_orderItemId == orderItemId) {
         return true;
       } else {
