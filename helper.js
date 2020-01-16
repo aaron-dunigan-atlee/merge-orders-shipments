@@ -51,12 +51,12 @@ function getWorkingRowNumber() {
 // Note that throughout the code, the variable 'orderNumber' is really an orderKey, because
 // we changed keys part way through the project.
 function getOrdersData() {
-  var sheet = SpreadsheetApp.openById(ORDERS_SHEET_ID).getSheets()[0];
+  var sheet = SpreadsheetApp.getActive().getSheetByName('Orders');
   return compileHashedGsdbData(sheet, 'orders_orderKey', 'orders_');
 }
 
 function getShipmentsData() {
-  var sheet = SpreadsheetApp.openById(SHIPMENTS_SHEET_ID).getSheets()[0];
+  var sheet = SpreadsheetApp.getActive().getSheetByName('Shipments');
   return compileHashedGsdbData(sheet, 'shipments_orderKey', 'shipments_');
 }
 

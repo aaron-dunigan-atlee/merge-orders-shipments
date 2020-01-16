@@ -9,6 +9,9 @@
 var COLUMN_INDEX_OFFSET = 1;
 var ROW_INDEX_OFFSET = 1;
 
+// How many header rows on the merged sheet. 
+var MERGED_SHEET_HEADER_ROW_COUNT = 5;
+
 // Global variables for holding object data, before/after we write it to the sheet.
 var mergedDataToUpdate = {};
 var mergedDataToAdd = {};
@@ -29,12 +32,9 @@ var MERGED_SHEET_HEADERS = [];
 var MERGED_SHEET_WIDTH = MERGED_SHEET.getLastColumn();
 var EMPTY_ROW = filledArray(MERGED_SHEET_WIDTH, "");
 
-// How many header rows on the merged sheet. 
-var MERGED_SHEET_HEADER_ROW_COUNT = 5;
 
 // Property names that go into header rows for each order.
 var ORDER_HEADER_FIELDS = getOrderHeaderFields();
-
 
 // Indices for columns which will contain formulas or formatting.  
 // As above, these are 0-based (Column A is 0, B is 1, etc.).
@@ -59,6 +59,7 @@ var QUARTER_COLUMN_INDEX;
 var ORDER_KEY_COLUMN_INDEX;
 var IS_HEADER_COLUMN_INDEX;
 var MAIN_ENTRY_PROPERTIES;
+var MERGED_SHEET_TITLES;
 
 // Set values for some of these global variables.
 // For technical reasons, tehse must be initialized inside a function.

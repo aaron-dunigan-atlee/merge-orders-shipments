@@ -81,6 +81,7 @@ function constructItemRow(rowObject) {
   rowDataToAppend = addOrderDate(rowDataToAppend, rowObject); 
   rowDataToAppend = addItemShippedFormula(rowDataToAppend, rowObject); 
   rowDataToAppend = addItemTotalFormula(rowDataToAppend);
+  rowDataToAppend = addStoreNameFormula(rowDataToAppend);
   // If there is a shipment present, add formulas.
   var orderItemId = rowObject.shipments_shipmentItems_orderItemId
   if (orderItemId != undefined && orderItemId != '') {
