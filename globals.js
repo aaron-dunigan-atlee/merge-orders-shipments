@@ -87,11 +87,11 @@ function initializeGlobals() {
   CARRIER_USED_COLUMN_INDEX = getColumnIndex('merged_carrierUsed');
   SERVICE_USED_COLUMN_INDEX = getColumnIndex('merged_serviceUsed');
   ITEM_TOTAL_COLUMN_INDEX = getColumnIndex('merged_itemTotal');
-  ITEM_PRICE_COLUMN_INDEX = getColumnIndex('orders_items_unitPrice');
-  ITEM_QTY_COLUMN_INDEX = getColumnIndex('orders_items_quantity');
+  ITEM_PRICE_COLUMN_INDEX = getColumnIndex('orders_items_1_unitPrice');
+  ITEM_QTY_COLUMN_INDEX = getColumnIndex('orders_items_1_quantity');
   SHIP_DATE_COLUMN_INDEX = getColumnIndex('shipments_shipDate');
   ITEM_SHIPPED_COLUMN_INDEX = getColumnIndex('merged_shipped');
-  ITEM_NAME_COLUMN_INDEX = getColumnIndex('orders_items_name');
+  ITEM_NAME_COLUMN_INDEX = getColumnIndex('orders_items_1_name');
   ORDER_FULFILLED_COLUMN_INDEX = getColumnIndex('merged_fulfilled');
   ORDER_TOTAL_COLUMN_INDEX = getColumnIndex('merged_orderTotal');
   ORDER_DATE_COLUMN_INDEX = getColumnIndex('orders_orderDate');

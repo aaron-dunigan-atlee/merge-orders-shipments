@@ -9,7 +9,7 @@ function compileHashedGsdbData(sheetObject, key, prefix) {
     if (accumulator[propertyName] == undefined) {
       accumulator[propertyName] = [object];
     } else {
-      accumulator[propertyName] = accumulator[propertyName].concat(object);
+      accumulator[propertyName].push(object);
     }
     return accumulator;
   }, {});
@@ -54,6 +54,38 @@ function getOrdersData() {
   console.time('getOrdersData')
   var sheet = SpreadsheetApp.getActive().getSheetByName('Orders');
   var hash = compileHashedGsdbData(sheet, 'orders_orderKey', 'orders_');
+  for (var orderKey in hash) {
+    hash[orderKey].forEach(function(row){
+      // If it has a second item, clone this row and set item_1 props equal to item_2 props 
+      if (row.orders_items_2_orderItemId) {
+        var rowCopy = {}
+        for (var attr in row) {
+          if (row.hasOwnProperty(attr)) rowCopy[attr] = row[attr];
+        }
+        // If we want more fields, this will have to be updated.  Possibly could be done with a regex?
+        rowCopy.orders_items_1_orderItemId = row.orders_items_2_orderItemId
+        rowCopy.orders_items_1_name = row.orders_items_2_name
+        rowCopy.orders_items_1_quantity = row.orders_items_2_quantity
+        rowCopy.orders_items_1_sku = row.orders_items_2_sku
+        rowCopy.orders_items_1_unitPrice = row.orders_items_2_unitPrice
+        hash[orderKey].push(rowCopy)
+      }
+      // Same for items_3
+      if (row.orders_items_3_orderItemId) {
+        var rowCopy = {}
+        for (var attr in row) {
+          if (row.hasOwnProperty(attr)) rowCopy[attr] = row[attr];
+        }
+        // If we want more fields, this will have to be updated.  Possibly could be done with a regex?
+        rowCopy.orders_items_1_orderItemId = row.orders_items_3_orderItemId
+        rowCopy.orders_items_1_name = row.orders_items_3_name
+        rowCopy.orders_items_1_quantity = row.orders_items_3_quantity
+        rowCopy.orders_items_1_sku = row.orders_items_3_sku
+        rowCopy.orders_items_1_unitPrice = row.orders_items_3_unitPrice
+        hash[orderKey].push(rowCopy)
+      }
+    })
+  }
   console.timeEnd('getOrdersData')
   return hash
 }
@@ -62,14 +94,45 @@ function getShipmentsData() {
   console.time('getShipmentsData')
   var sheet = SpreadsheetApp.getActive().getSheetByName('Shipments');
   var hash = compileHashedGsdbData(sheet, 'shipments_orderKey', 'shipments_');
+  for (var orderKey in hash) {
+    hash[orderKey].forEach(function(row){
+      // If it has a second item, clone this row and set item_1 props equal to item_2 props 
+      if (row.shipments_shipmentItems_2_orderItemId) {
+        var rowCopy = {}
+        for (var attr in row) {
+          if (row.hasOwnProperty(attr)) rowCopy[attr] = row[attr];
+        }
+        // If we want more fields, this will have to be updated.  Possibly could be done with a regex?
+        rowCopy.shipments_shipmentItems_1_orderItemId = row.shipments_shipmentItems_2_orderItemId
+        rowCopy.shipments_shipmentItems_1_name = row.shipments_shipmentItems_2_name
+        rowCopy.shipments_shipmentItems_1_quantity = row.shipments_shipmentItems_2_quantity
+        hash[orderKey].push(rowCopy)
+      }
+      // Same for items_3
+      if (row.shipments_shipmentItems_3_orderItemId) {
+        var rowCopy = {}
+        for (var attr in row) {
+          if (row.hasOwnProperty(attr)) rowCopy[attr] = row[attr];
+        }
+        rowCopy.shipments_shipmentItems_1_orderItemId = row.shipments_shipmentItems_3_orderItemId
+        rowCopy.shipments_shipmentItems_1_name = row.shipments_shipmentItems_3_name
+        rowCopy.shipments_shipmentItems_1_quantity = row.shipments_shipmentItems_3_quantity
+        hash[orderKey].push(rowCopy)
+      }
+    })
+  }
   console.timeEnd('getShipmentsData')
   return hash
 }
 
 // Check whether an order and a shipment correspond.
 function orderMatchesShipment(orderItem, shipmentItem) {
-  return (orderItem.items_name == shipmentItem.shipmentItems_name 
-          && orderItem.items_quantity == shipmentItem.shipmentItems_quantity
+  // On 12.30.19 there was a change in field names from *items_* to *itmes_1_*.
+  /*return ((orderItem.items_name == shipmentItem.shipmentItems_name || orderItem.items_1_name == shipmentItem.shipmentItems_1_name)
+          && (orderItem.items_quantity == shipmentItem.shipmentItems_quantity || orderItem.items_1_quantity == shipmentItem.shipmentItems_1_quantity)
+          && orderItem.orderNumber == shipmentItem.orderNumber);*/
+  return ((orderItem.items_1_name == shipmentItem.shipmentItems_1_name)
+          && (orderItem.items_1_quantity == shipmentItem.shipmentItems_1_quantity)
           && orderItem.orderNumber == shipmentItem.orderNumber);
 }
 
@@ -115,7 +178,7 @@ function constructArrayFromObject(headers, rowObject) {
 }
 
 function leftJoin(leftObjects, rightObjects, leftKey, rightKey) {
-  var hashRightObjects = hashArr(rightObjects, rightKey);
+  var hashRightObjects = hashArray(rightObjects, rightKey);
   return leftObjects.map(function(lObj) {
     var rObj = hashRightObjects[lObj[leftKey]];
     for (var property in rObj) {
@@ -124,6 +187,8 @@ function leftJoin(leftObjects, rightObjects, leftKey, rightKey) {
     return lObj;
   });
 }
+
+
 
 function fillRow(dbObjects, filterObject, rowObject) {
   // Update a single row in the data.  Cells with prior values will not be replaced.

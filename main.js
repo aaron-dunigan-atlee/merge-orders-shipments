@@ -55,7 +55,7 @@ function addOrderToMergedUpdate(orderNumber) {
   if (shipmentsData[orderNumber] == undefined) {
     var joinedOrder = ordersData[orderNumber];
   } else {
-    var joinedOrder = leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'items_1_orderItemId','shipments_shipmentItems_orderItemId');
+    var joinedOrder = leftJoin(ordersData[orderNumber],shipmentsData[orderNumber],'orderId','shipments_orderId');
   }
   mergedDataToAdd[orderNumber] = joinedOrder;
 }
@@ -67,8 +67,9 @@ function updateShipmentsInMerged(orderNumber, mergedRowsData) {
   for (var i=0; i<shipmentsData[orderNumber].length; i++) {
     var shipmentObject = shipmentsData[orderNumber][i];
     // If this shipment is not yet in the spreadsheet, add it.
-    // Keying by shipmentItems_orderItemId.  Very rarely, there are duplicates.  
-    var shipmentItemId = shipmentObject['shipments_shipmentItems_orderItemId']; 
+    // 1.19.20. We were keying by shipmentItems_orderItemId, but header names were changed.
+    // It appears that matching shipments to orders by orderId is more reliable.  
+    var shipmentItemId = shipmentObject['shipments_orderId']; 
     if (!hasShipmentData(existingMergedObject, shipmentItemId)) {
       console.log("Updating shipment info for id %s", shipmentItemId);
       // First, add values/formulas for properties with merged_headerName (dimensions, weight, etc.)
@@ -80,7 +81,7 @@ function updateShipmentsInMerged(orderNumber, mergedRowsData) {
         }
       }
       // Add this shipment to the spreadsheet under the correct order. 
-      var filter = {'items_1_orderItemId': [shipmentObject['shipments_shipmentItems_orderItemId']]};
+      var filter = {'orders_orderId': [shipmentObject['shipments_orderId']]};
       // MergeDb.fillRow(MERGED_SHEET_NAME, filter, shipmentObject);
       fillRow(mergedRowsData, filter, shipmentObject);
     }
@@ -88,11 +89,11 @@ function updateShipmentsInMerged(orderNumber, mergedRowsData) {
 }
 
 function hasShipmentData(orderArray, orderItemId) {
-  // 1. Find item in orderArray that has items_orderItemId equal to orderItemId
-  // 2. Check if this item already has a value for shipmentItems_orderItemId.
+  // 1. Find item in orderArray that has orderId (previously items_orderItemId) equal to orderItemId
+  // 2. Check if this item already has a value for orderId.
   for (var i=0; i<orderArray.length; i++) {
-    if (orderArray[i].items_1_orderItemId == orderItemId) {
-      if (orderArray[i].shipments_shipmentItems_orderItemId == orderItemId) {
+    if (orderArray[i].orderId == orderItemId) {
+      if (orderArray[i].shipments_orderId == orderItemId) {
         return true;
       } else {
         return false;

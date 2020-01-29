@@ -105,7 +105,7 @@ function setRowsData(sheet, objects, optHeadersRange, optFirstDataRowIndex) {
     var values = []
     for (j = 0; j < headers.length; ++j) {
       var header = headers[j];
-      values.push(header.length > 0 && objects[i][header] ? objects[i][header] : "");
+      values.push(header.length > 0 && objects[i][header] != undefined ? objects[i][header] : "");
     }
     data.push(values);
   }
@@ -175,7 +175,7 @@ function setRowsDataKeepFormulas(sheet, objects, optHeadersRange, optFirstDataRo
         values.push(formulas[i][j])
       } else {
         var header = headers[j];
-        values.push(header.length > 0 && objects[i][header] ? objects[i][header] : "");
+        values.push(header.length > 0 && objects[i][header] != undefined ? objects[i][header] : "");
       }
     }
     data.push(values);
